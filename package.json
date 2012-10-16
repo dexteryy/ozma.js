@@ -1,6 +1,6 @@
 {
     "name": "ozma",
-    "description": "Autobuild tool for OzJS based WebApp",
+    "description": "Intelligent autobuild tool for OzJS",
     "homepage": "https://github.com/dexteryy/ozma.js",
     "author": {
         "name": "dexteryy",
