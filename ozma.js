@@ -35,6 +35,8 @@ function Ozma(){
     var _capture_require;
     var _require_holds = [];
     var _scripts = {};
+    var _refers = {};
+    var _delays= {};
     var _code_cache = {};
     var _code_bottom = '';
     var _mods_code_cache = {};
@@ -176,6 +178,26 @@ function Ozma(){
             is_undefined_mod,
             observers = _scripts[url];
         if (!observers) {
+            var mname = m.fullname, delays = _delays;
+            if (m.deps && m.deps.length && delays[mname] !== 1) {
+                delays[mname] = [m.deps.length, cb];
+                m.deps.forEach(function(dep){
+                    var d = Oz._config.mods[dep];
+                    if (this[dep] !== 1 && d.url && d.loaded !== 2) {
+                        if (!this[dep]) {
+                            this[dep] = [];
+                        }
+                        this[dep].push(m);
+                    } else {
+                        delays[mname][0]--;
+                    }
+                }, _refers);
+                if (delays[mname][0] > 0) {
+                    return;
+                } else {
+                    delays[mname] = 1;
+                }
+            }
             observers = _scripts[url] = [[cb, m]];
             read(m, function(data){
                 if (data) {
@@ -210,6 +232,16 @@ function Ozma(){
                     }
                 }
                 _scripts[url] = 1;
+                if (_refers[mname] && _refers[mname] !== 1) {
+                    _refers[mname].forEach(function(dm){
+                        var b = this[dm.fullname];
+                        if (--b[0] <= 0) {
+                            this[dm.fullname] = 1;
+                            Oz.fetch(dm, b[1]);
+                        }
+                    }, delays);
+                    _refers[mname] = 1;
+                }
             });
         } else if (observers === 1) {
             cb.call(m);
@@ -280,7 +312,7 @@ function Ozma(){
             }
             unique(_lazy_loading);
             if (clip[0]) {
-                logger.log(STEPMARK, 'Analyzing runtime dependencies inside', '"' + clip[0] 
+                logger.log(STEPMARK, 'Analyzing dynamic dependencies inside', '"' + clip[0] 
                             + '"(included in', '\033[4m' + _current_scope_file + '\033[0m)');
                 logger.log('\033[36m', _lazy_loading.map(function(str){
                     return 'require: "' + str + '"';
