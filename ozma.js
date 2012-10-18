@@ -670,18 +670,18 @@ function true_url(url, alias){
 }
 
 optimist.usage('Autobuild tool for OzJS based WebApp.\n'
-    + 'Usage: $0 [build script] --config [configuration file]');
-
-exports.Ozma = Ozma;
-
-exports.exec = function(){
-    optimist.alias('s', 'silent')
+    + 'Usage: $0 [build script] --config [configuration file]')
+        .alias('s', 'silent')
         .alias('c', 'config')
         .boolean('jam')
         .boolean('silent')
         .boolean('enable-modulelog');
+
+exports.Ozma = Ozma;
+
+exports.exec = function(){
     var main = Ozma();
-    main(optimist.argv);
+    main(optimist.alias().argv);
 };
 
 if (!module.parent) {
