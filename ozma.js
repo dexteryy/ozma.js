@@ -20,6 +20,7 @@ var _DEFAULT_CONFIG = {
     "jamPackageDir": null,
     "loader": null,
     "aliases": null,
+    "ignore": null,
     "disableAutoSuffix": false 
 };
 
@@ -435,6 +436,12 @@ function Ozma(){
             _runtime.window = _runtime;
             _runtime.console = Object.create(logger);
             _runtime.process = process;
+
+            if (_config.ignore) {
+                _config.ignore.forEach(function(mid){
+                    Oz.define(mid, [], function(){});
+                });
+            }
 
             if (args['jam']) {
                 logger.log(STEPMARK, 'Building for Jam');
