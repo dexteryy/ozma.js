@@ -11,6 +11,7 @@ var OZ_SOURCE = './lib/oz';
 var INDENTx1 = '';
 var STEPMARK = '\033[34m==>\033[0m';
 var RE_AUTOFIXNAME = /define\((?=[^'"])/;
+var RE_AUTOARGS = /define\(([^\[\]]*?)function\((.*?)\)\{/g;
 var RE_REQUIRE = /(^|\s)require\((\[[\w'"\/\-\:,\n\r\s]*\]|.+)\,/gm;
 var CONFIG_BUILT_CODE = '\nrequire.config({ enable_ozma: true });\n\n';
 var _DEFAULT_CONFIG = {
@@ -105,26 +106,27 @@ function Ozma(){
         }
         logger.log(STEPMARK, 'Building');
         list.reverse().forEach(function(mod){
+            var mid = mod.fullname;
             if (mod.is_reset) {
-                mod = Oz._config.mods[mod.fullname];
+                mod = Oz._config.mods[mid];
             }
-            if (mod.url || !mod.fullname) {
+            if (mod.url || !mid) {
                 if (mod.built 
-                    || !mod.fullname && !_is_global_scope) {
+                    || !mid && !_is_global_scope) {
                     if (mod.built) {
                         logger.warn('\033[33m', 'ignore: ', mod.url, '\033[0m');
                     }
                     return;
                 }
-                var import_code = this[mod.fullname || ''];
+                var import_code = this[mid || ''];
                 if (!import_code) {
                     return;
                 }
                 // semicolons are inserted between files if concatenating would cause errors.
                 output_code += '\n/* @source ' + (mod.url || '') + ' */;\n\n'
                                 + import_code;
-                if (mod.fullname !== '__loader__') {
-                    _mods_code_cache[_build_script].push([mod.fullname, import_code]);
+                if (mid !== '__loader__') {
+                    _mods_code_cache[_build_script].push([mid, import_code]);
                 } else if (_is_global_scope) {
                     if (_loader_config_script) {
                         output_code += _loader_config_script;
@@ -200,19 +202,20 @@ function Ozma(){
             }
             observers = _scripts[url] = [[cb, m]];
             read(m, function(data){
+                var _mods = Oz._config.mods;
                 if (data) {
                     try {
                         _capture_require = true;
                         vm.runInContext(data, _runtime);
                         _capture_require = false;
-                        merge(Oz._config.mods[m.fullname].deps, _require_holds);
+                        merge(_mods[m.fullname].deps, _require_holds);
                         _require_holds.length = 0;
                     } catch(ex) {
                         logger.info(INDENTx1, '\033[33m' + 'Unrecognized module: ', m.fullname + '\033[0m');
                         _capture_require = false;
                         _require_holds.length = 0;
                     }
-                    if (Oz._config.mods[m.fullname] === m) {
+                    if (_mods[m.fullname] === m) {
                         is_undefined_mod = true;
                     }
                 }
@@ -220,8 +223,9 @@ function Ozma(){
                     args[0].call(args[1]);
                 });
                 if (data) {
+                    auto_fix_deps(_mods[m.fullname]);
                     if (is_undefined_mod) {
-                        if (Oz._config.mods[m.fullname] === m) {
+                        if (_mods[m.fullname] === m) {
                             _code_cache[m.fullname] += '\n/* autogeneration */' 
                                 + '\ndefine("' + m.fullname + '", [' 
                                 + (m.deps && m.deps.length ? ('"' + m.deps.join('", "') + '"') : '')
@@ -360,6 +364,22 @@ function Ozma(){
         _code_cache[mid] = _code_cache[mid].replace(RE_AUTOFIXNAME, function($0){
             return $0 + '"' + mid + '", ';
         });
+    }
+
+    function auto_fix_deps(mod){
+        var hiddenDeps = mod.block && mod.block.hiddenDeps;
+        if (hiddenDeps) {
+            _code_cache[mod.fullname] = _code_cache[mod.fullname].replace(RE_AUTOARGS, function($0, $1, $2){
+                return 'define(' + $1 
+                    + (hiddenDeps.length ? ('["' + hiddenDeps.join('", "') + '"]') : '[]')
+                    + ', function(' 
+                    + ($2 && hiddenDeps.length 
+                        ? hiddenDeps.map(function(n, i){
+                            return '__oz' + i;
+                        }).join(', ') + ', ' : '') 
+                    + $2 + '){';
+            });
+        }
     }
 
     function load_config(file){
