@@ -166,9 +166,9 @@ function Ozma(){
             if (!seek_lazy_module()) {
                 logger.log(_output_count + ' files, built in ' 
                             + (+new Date() - _begin_time) + 'ms');
-            }
-            if (_complete_callback) {
-                _complete_callback();
+                if (_complete_callback) {
+                    _complete_callback();
+                }
             }
         });
     };
