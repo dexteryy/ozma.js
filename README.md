@@ -1,6 +1,6 @@
 # Ozma.js 
 
-Intelligent autobuild tool for [OzJS](https://github.com/dexteryy/OzJS)
+Intelligent autobuild tool for [OzJS](http://ozjs.org)
 
 ## Install:
     npm install -g ozma
@@ -15,14 +15,14 @@ Intelligent autobuild tool for [OzJS](https://github.com/dexteryy/OzJS)
 * `--enable-modulelog` — 允许js文件中的console信息打印在终端里
 
 ## Examples (with docs):
-* [demo1: for production or development](http://dexteryy.github.com/OzJS/examples/buildtool/demo1.html)
-* [demo2: for development](http://dexteryy.github.com/OzJS/examples/buildtool/demo2.html)
-* [demo3: for production](http://dexteryy.github.com/OzJS/examples/buildtool/demo3.html)
-* [demo4: for third party package manager](http://dexteryy.github.com/OzJS/examples/buildtool/demo4.html)
+* [demo1: for production or development](http://ozjs.org/examples/buildtool/demo1.html)
+* [demo2: for development](http://ozjs.org/examples/buildtool/demo2.html)
+* [demo3: for production](http://ozjs.org/examples/buildtool/demo3.html)
+* [demo4: for third party package manager](http://ozjs.org/examples/buildtool/demo4.html)
 
 ## Grunt plugin:
 
 [grunt-ozjs](https://github.com/dexteryy/grunt-ozjs) enables you to use [grunt.js gruntfile](https://github.com/gruntjs/grunt/blob/master/docs/getting_started.md) to configure `ozma` and integrate with other [grunt tasks](http://gruntjs.com/)
 
 ## Source code:
-* [View on Github](https://github.com/dexteryy/OzJS/tree/master/tools/ozma/)
+* [View on Github](https://github.com/dexteryy/ozma.js)
