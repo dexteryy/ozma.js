@@ -1,7 +1,7 @@
 {
     "name": "ozma",
     "description": "Intelligent autobuild tool for OzJS",
-    "homepage": "https://github.com/dexteryy/ozma.js",
+    "homepage": "https://ozjs.org/ozma",
     "author": {
         "name": "dexteryy",
         "email": "dexter.yy@gmail.com",
@@ -25,7 +25,7 @@
         "ozjs"
     ],
 
-    "version": "1.3.3",
+    "version": "1.3.4",
     "bin": {
         "ozma": "bin/ozma"
     },
