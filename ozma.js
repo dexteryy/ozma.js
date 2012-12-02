@@ -13,13 +13,15 @@ var STEPMARK = '\033[34m==>\033[0m';
 var RE_AUTOFIXNAME = /define\((?=[^'"])/;
 var RE_AUTOARGS = /define\(([^\[\]]*?)function\((.*?)\)\{/g;
 var RE_REQUIRE = /(^|\s)require\((\[[\w'"\/\-\:,\n\r\s]*\]|.+)\,/gm;
+var RE_REQUIRE_VAL = /(require\(\s*)(['"].+?['"])\)/g;
+var RE_REQUIRE_DEPS = /(^|[^\S\n\r]*)(require\(\s*)(\[[^\]]*\])/g;
+var RE_DEFINE_DEPS = /(^|[^\S\n\r]*)(define\([^\[\),]+,\s*)(\[[^\]]*\])/g;
 var CONFIG_BUILT_CODE = '\nrequire.config({ enable_ozma: true });\n\n';
 var _DEFAULT_CONFIG = {
     "baseUrl": "./",
     "distUrl": null,
     "jamPackageDir": null,
     "loader": null,
-    "aliases": null,
     "ignore": null,
     "disableAutoSuffix": false 
 };
@@ -56,7 +58,7 @@ function Ozma(){
     /**
      * implement hook
      */
-    Oz.require = function(deps, block){
+    Oz.require = function(deps){
         if (_capture_require) {
             _require_holds.push.apply(_require_holds, typeof deps === 'string' ? [deps] : deps);
         } else {
@@ -64,24 +66,7 @@ function Ozma(){
         }
     };
 
-    /**
-     * override
-     */ 
-    Oz.require.config = function(opt){
-        for (var i in opt) {
-            if (i === 'aliases') {
-                if (!_config[i]) {
-                    _config[i] = {};
-                }
-                for (var j in opt[i]) {
-                    _config[i][j] = opt[i][j];
-                }
-            } else if (i === 'baseUrl') {
-                continue;
-            }
-            Oz._config[i] = opt[i];
-        }
-    };
+    Oz.require.config = Oz.config;
 
     /**
      * implement hook
@@ -93,7 +78,7 @@ function Ozma(){
             if (loader) {
                 if (_loader_readed) {
                     list.push({
-                        fullname: '__loader__',
+                        name: '__loader__',
                         url: loader
                     });
                 } else {
@@ -107,7 +92,7 @@ function Ozma(){
         }
         logger.log(STEPMARK, 'Building');
         list.reverse().forEach(function(mod){
-            var mid = mod.fullname;
+            var mid = mod.name;
             if (mod.is_reset) {
                 mod = Oz._config.mods[mid];
             }
@@ -142,16 +127,12 @@ function Ozma(){
             }
         }, _code_cache);
         var output = _config.disableAutoSuffix ? _build_script 
-                                    : Oz.truename(_build_script);
+                                    : Oz.truefile(_build_script);
         if (!_is_global_scope) {
-            var alias = _config.aliases || Oz._config.aliases;
-            if (alias) {
-                output = true_url(output, alias);
-            }
-            output = (_config.distUrl || _config.baseUrl) + output;
+            output = path.join(_config.distUrl || _config.baseUrl, output);
         } else if (_config.distUrl) {
-            output = _config.distUrl + path.resolve(output)
-                                            .replace(path.resolve(_config.baseUrl) + '/', '');
+            output = path.join(_config.distUrl, 
+                relative_path(output, _config.baseUrl));
         }
         output_code += _code_bottom;
         writeFile3721(output, output_code, function(err){
@@ -181,7 +162,7 @@ function Ozma(){
             is_undefined_mod,
             observers = _scripts[url];
         if (!observers) {
-            var mname = m.fullname, delays = _delays;
+            var mname = m.name, delays = _delays;
             if (m.deps && m.deps.length && delays[mname] !== 1) {
                 delays[mname] = [m.deps.length, cb];
                 m.deps.forEach(function(dep){
@@ -209,14 +190,14 @@ function Ozma(){
                         _capture_require = true;
                         vm.runInContext(data, _runtime);
                         _capture_require = false;
-                        merge(_mods[m.fullname].deps, _require_holds);
+                        merge(_mods[m.name].deps, _require_holds);
                         _require_holds.length = 0;
                     } catch(ex) {
-                        logger.info(INDENTx1, '\033[33m' + 'Unrecognized module: ', m.fullname + '\033[0m');
+                        logger.info(INDENTx1, '\033[33m' + 'Unrecognized module: ', m.name + '\033[0m');
                         _capture_require = false;
                         _require_holds.length = 0;
                     }
-                    if (_mods[m.fullname] === m) {
+                    if (_mods[m.name] === m) {
                         is_undefined_mod = true;
                     }
                 }
@@ -224,24 +205,25 @@ function Ozma(){
                     args[0].call(args[1]);
                 });
                 if (data) {
-                    auto_fix_deps(_mods[m.fullname]);
+                    auto_fix_anon(_mods[m.name]);
                     if (is_undefined_mod) {
-                        if (_mods[m.fullname] === m) {
-                            _code_cache[m.fullname] += '\n/* autogeneration */' 
-                                + '\ndefine("' + m.fullname + '", [' 
+                        if (_mods[m.name] === m) {
+                            _code_cache[m.name] += '\n/* autogeneration */' 
+                                + '\ndefine("' + m.name + '", [' 
                                 + (m.deps && m.deps.length ? ('"' + m.deps.join('", "') + '"') : '')
                                 + '], function(){});\n';
                         } else {
-                            auto_fix_name(m.fullname);
+                            auto_fix_name(m.name);
                         }
                     }
+                    auto_fix_deps(_mods[m.name]);
                 }
                 _scripts[url] = 1;
                 if (_refers[mname] && _refers[mname] !== 1) {
                     _refers[mname].forEach(function(dm){
-                        var b = this[dm.fullname];
+                        var b = this[dm.name];
                         if (--b[0] <= 0) {
-                            this[dm.fullname] = 1;
+                            this[dm.name] = 1;
                             Oz.fetch(dm, b[1]);
                         }
                     }, delays);
@@ -256,15 +238,10 @@ function Ozma(){
     };
 
     function read(m, cb){
-        var url = m.url;
-        var alias = _config.aliases || Oz._config.aliases;
-        if (alias) {
-            url = true_url(url, alias);
-        }
-        var file = path.resolve(path.join(_config.baseUrl, url));
+        var file = path.resolve(path.join(_config.baseUrl, m.url));
         if (!fs.existsSync(file)) {
             setTimeout(function(){
-                logger.log(INDENTx1, '\033[33m' + 'Undefined module: ', m.fullname + '\033[0m');
+                logger.log(INDENTx1, '\033[33m' + 'Undefined module: ', m.name + '\033[0m');
                 cb();
             }, 0);
             return;
@@ -274,7 +251,7 @@ function Ozma(){
                 return logger.error("\033[31m", 'ERROR: Can not read "' + file + '"\033[0m');
             }
             if (data) {
-                _code_cache[m.fullname] = data;
+                _code_cache[m.name] = data;
             }
             cb(data);
         });
@@ -334,7 +311,7 @@ function Ozma(){
         if (m && m.loaded == 2) {
             return seek_lazy_module();
         }
-        var new_build = m && m.url || Oz.autoname(mid);
+        var new_build = m && m.url || Oz.autofile(mid);
         if (_build_history[new_build]) {
             //return seek_lazy_module();
             var last_build = _build_history[new_build];
@@ -361,16 +338,36 @@ function Ozma(){
         _file_scope_scripts[url] = _scripts;
     }
 
+    function relative_path(origin, target){
+        target = path.resolve(target).split('/');
+        origin = path.resolve(origin).split('/');
+        var file = origin.pop();
+        var output = [];
+        for (var i = 0; i < target.length; i++) {
+            if (target[i] !== origin[i]) {
+                for (var j = 0; j < target.length - i; j++) {
+                    output.push('..');
+                }
+                if (origin[i]) {
+                    output= output.concat(origin.slice(i));
+                }
+                break;
+            }
+        }
+        output.push(file);
+        return output.join('/');
+    }
+
     function auto_fix_name(mid){
         _code_cache[mid] = _code_cache[mid].replace(RE_AUTOFIXNAME, function($0){
             return $0 + '"' + mid + '", ';
         });
     }
 
-    function auto_fix_deps(mod){
+    function auto_fix_anon(mod){
         var hiddenDeps = mod.block && mod.block.hiddenDeps;
         if (hiddenDeps) {
-            _code_cache[mod.fullname] = _code_cache[mod.fullname].replace(RE_AUTOARGS, function($0, $1, $2){
+            _code_cache[mod.name] = _code_cache[mod.name].replace(RE_AUTOARGS, function($0, $1, $2){
                 return 'define(' + $1 
                     + (hiddenDeps.length ? ('["' + hiddenDeps.join('", "') + '"]') : '[]')
                     + ', function(' 
@@ -380,6 +377,28 @@ function Ozma(){
                         }).join(', ') + ', ' : '') 
                     + $2 + '){';
             });
+        }
+    }
+
+    function auto_fix_deps(mod){
+        _code_cache[mod.name] = _code_cache[mod.name]
+            .replace(RE_REQUIRE_VAL, function($0, $1, $2){
+                var dep = eval($2);
+                return $1 + '"' + Oz.unifyname(dep, mod) + '")';
+            })
+            .replace(RE_REQUIRE_DEPS, tidy)
+            .replace(RE_DEFINE_DEPS, tidy);
+        function tidy($0, $1, $2, $3){
+            var deps = eval($3);
+            if (typeof deps === 'string') {
+                deps = [deps];
+            }
+            deps = deps.map(function(dep){
+                return Oz.unifyname(dep, mod);
+            });
+            return $1 + $2 + (deps.length ? 
+                ('[\n' + $1 + '  "' + deps.join('",\n' + $1 + '  "') + '"\n' + $1 + ']') 
+                : $3);
         }
     }
 
@@ -514,7 +533,7 @@ function Ozma(){
                     _loader_config_script = opt.loader_config;
                 }
                 read({
-                    fullname: '__loader__',
+                    name: '__loader__',
                     url: loader
                 }, function(){
                     _loader_readed = true;
@@ -668,12 +687,6 @@ function disable_methods(obj, cfg){
     for (var i in cfg) {
         obj[i] = function(){};
     }
-}
-
-function true_url(url, alias){
-    return url.replace(/\{(\w+)\}/g, function(e1, e2){
-        return alias[e2] || "";
-    });
 }
 
 optimist.usage('Autobuild tool for OzJS based WebApp.\n'
