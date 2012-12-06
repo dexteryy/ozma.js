@@ -348,11 +348,11 @@ function Ozma(){
                 for (var j = 0; j < target.length - i; j++) {
                     output.push('..');
                 }
-                if (origin[i]) {
-                    output= output.concat(origin.slice(i));
-                }
                 break;
             }
+        }
+        if (origin[i]) {
+            output = output.concat(origin.slice(i));
         }
         output.push(file);
         return output.join('/');
