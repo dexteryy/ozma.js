@@ -12,10 +12,11 @@ var INDENTx1 = '';
 var STEPMARK = '\033[34m==>\033[0m';
 var RE_AUTOFIXNAME = /define\((?=[^'"])/;
 var RE_AUTOARGS = /define\(([^\[\]]*?)function\((.*?)\)\{/g;
-var RE_REQUIRE = /(^|\s)require\((\[[\w'"\/\-\:,\n\r\s]*\]|.+)\,/gm;
+var RE_REQUIRE = /(^|\s)require\(\s*(\[[^\]]*\]|.+?)\s*\,/gm;
 var RE_REQUIRE_VAL = /(require\(\s*)(['"].+?['"])\)/g;
 var RE_REQUIRE_DEPS = /(^|[^\S\n\r]*)(require\(\s*)(\[[^\]]*\])/g;
-var RE_DEFINE_DEPS = /(^|[^\S\n\r]*)(define\([^\[\),]+,\s*)(\[[^\]]*\])/g;
+var RE_DEFINE_DEPS = /(^|[^\S\n\r]*)(define\(\s*[^\[\),]+,\s*)(\[[^\]]*\])/g;
+var RE_ALIAS_IN_MID = /^([\w\-]+)\//;
 var CONFIG_BUILT_CODE = '\nrequire.config({ enable_ozma: true });\n\n';
 var _DEFAULT_CONFIG = {
     "baseUrl": "./",
@@ -127,7 +128,7 @@ function Ozma(){
             }
         }, _code_cache);
         var output = _config.disableAutoSuffix ? _build_script 
-                                    : Oz.truefile(_build_script);
+                                    : Oz.namesuffix(_build_script);
         if (!_is_global_scope) {
             output = path.join(_config.distUrl || _config.baseUrl, output);
         } else if (_config.distUrl) {
@@ -166,7 +167,7 @@ function Ozma(){
             if (m.deps && m.deps.length && delays[mname] !== 1) {
                 delays[mname] = [m.deps.length, cb];
                 m.deps.forEach(function(dep){
-                    var d = Oz._config.mods[dep];
+                    var d = Oz._config.mods[Oz.realname(dep)];
                     if (this[dep] !== 1 && d.url && d.loaded !== 2) {
                         if (!this[dep]) {
                             this[dep] = [];
@@ -307,11 +308,11 @@ function Ozma(){
         }
         var mods = _file_scope_mods[_current_scope_file];
         var scripts = _file_scope_scripts[_current_scope_file];
-        var m = mods[mid];
+        var m = mods[Oz.realname(mid)];
         if (m && m.loaded == 2) {
             return seek_lazy_module();
         }
-        var new_build = m && m.url || Oz.autofile(mid);
+        var new_build = m && m.url || Oz.filesuffix(Oz.realname(mid));
         if (_build_history[new_build]) {
             //return seek_lazy_module();
             var last_build = _build_history[new_build];
@@ -384,7 +385,7 @@ function Ozma(){
         _code_cache[mod.name] = _code_cache[mod.name]
             .replace(RE_REQUIRE_VAL, function($0, $1, $2){
                 var dep = eval($2);
-                return $1 + '"' + Oz.unifyname(dep, mod) + '")';
+                return $1 + '"' + Oz.basename(dep, mod) + '")';
             })
             .replace(RE_REQUIRE_DEPS, tidy)
             .replace(RE_DEFINE_DEPS, tidy);
@@ -394,7 +395,7 @@ function Ozma(){
                 deps = [deps];
             }
             deps = deps.map(function(dep){
-                return Oz.unifyname(dep, mod);
+                return Oz.basename(dep, mod);
             });
             return $1 + $2 + (deps.length ? 
                 ('[\n' + $1 + '  "' + deps.join('",\n' + $1 + '  "') + '"\n' + $1 + ']') 
