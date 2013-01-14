@@ -16,7 +16,6 @@ var RE_REQUIRE = /(^|\s)require\(\s*(\[[^\]]*\]|.+?)\s*\,/gm;
 var RE_REQUIRE_VAL = /(require\(\s*)(['"].+?['"])\)/g;
 var RE_REQUIRE_DEPS = /(^|[^\S\n\r]*)(require\(\s*)(\[[^\]]*\])/g;
 var RE_DEFINE_DEPS = /(^|[^\S\n\r]*)(define\(\s*[^\[\),]+,\s*)(\[[^\]]*\])/g;
-var RE_ALIAS_IN_MID = /^([\w\-]+)\//;
 var CONFIG_BUILT_CODE = '\nrequire.config({ enable_ozma: true });\n\n';
 var _DEFAULT_CONFIG = {
     "baseUrl": "./",
@@ -340,8 +339,8 @@ function Ozma(){
     }
 
     function relative_path(origin, target){
-        target = path.resolve(target).split('/');
-        origin = path.resolve(origin).split('/');
+        target = path.resolve(target).split(path.sep);
+        origin = path.resolve(origin).split(path.sep);
         var file = origin.pop();
         var output = [];
         for (var i = 0; i < target.length; i++) {
@@ -356,7 +355,7 @@ function Ozma(){
             output = output.concat(origin.slice(i));
         }
         output.push(file);
-        return output.join('/');
+        return output.join(path.sep);
     }
 
     function auto_fix_name(mid){
