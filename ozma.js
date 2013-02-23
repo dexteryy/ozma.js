@@ -7,7 +7,6 @@ var optimist = require('optimist');
 var jsdom = require("jsdom").jsdom;
 var logger = Object.create(console);
 
-var OZ_SOURCE = './lib/oz';
 var INDENTx1 = '';
 var STEPMARK = '\033[34m==>\033[0m';
 var RE_AUTOFIXNAME = /define\((?=[^'"])/;
@@ -28,8 +27,8 @@ var _DEFAULT_CONFIG = {
 
 function Ozma(){
 
-    delete require.cache[require.resolve(OZ_SOURCE)];
-    var Oz = require(OZ_SOURCE);
+    delete require.cache[require.resolve('ozjs')];
+    var Oz = require('ozjs');
 
     var _runtime;
     var _config = {};
@@ -481,7 +480,7 @@ function Ozma(){
                     fs.readFile(
                         path.join(
                             path.dirname(/\S+$/.exec(module.filename)[0]), 
-                            'lib/oz.js'
+                            'node_modules/ozjs/oz.js'
                         ), 'utf-8', function(err, data){
                         writeFile3721(path.join(jam_path, 'oz.config.js'), [autoconfig].join('\n'), function(){
                             logger.log(INDENTx1, 'updating', '\033[4m' + path.join(jam_path, 'oz.config.js') + '\033[0m');

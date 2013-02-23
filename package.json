@@ -15,6 +15,23 @@
         "type": "MIT",
         "url": "http://www.opensource.org/licenses/mit-license.php"
     }],
+    "version": "1.4.5",
+    "bin": {
+        "ozma": "bin/ozma"
+    },
+    "main": "./ozma.js",
+    "files": [
+        "bin",
+        "ozma.js",
+        "README.md"
+    ],
+    "devDependencies": {
+    },
+    "dependencies": {
+        "ozjs": "~2.5.1",
+        "optimist": "~0.3.5",
+        "jsdom": "~0.2.15"
+    },
     "keywords" : [
         "browser",
         "javascript",
@@ -23,21 +40,5 @@
         "bundle",
         "build",
         "ozjs"
-    ],
-
-    "version": "1.4.4",
-    "bin": {
-        "ozma": "bin/ozma"
-    },
-    "main": "./ozma.js",
-    "files": [
-        "bin",
-        "lib",
-        "ozma.js",
-        "README.md"
-    ],
-    "dependencies": {
-        "optimist": ">=0.3.5",
-        "jsdom": ">=0.2.15"
-    }
+    ]
 }
