@@ -4,7 +4,6 @@ var fs = require('fs');
 var path = require('path');
 var vm = require('vm');
 var optimist = require('optimist');
-var jsdom = require("jsdom").jsdom;
 var logger = Object.create(console);
 
 var INDENTx1 = '';
@@ -277,8 +276,7 @@ function Ozma(){
             while (r = RE_REQUIRE.exec(clip[1])) {
                 if (r[2]) {
                     var deps_str = r[2].trim();
-                    if (deps_str == 'deps')
-                    if (!/^\[?["']/.test(deps_str)) {
+                    if (!/^\[?\s*[\x22\x27]/.test(deps_str)) {
                         logger.log('\n\033[31m' + 'WARN: "require(' + deps_str + '," is unanalyzable' + '\033[0m\n');
                         continue;
                     }
@@ -446,14 +444,16 @@ function Ozma(){
         }
 
         if (!_runtime) {
-            var doc = jsdom("<html><head></head><body></body></html>");
-            var win = doc.createWindow();
-            _runtime = vm.createContext(
-                merge(Oz, win)
-            );
+            var doc = require("jsdom-nogyp").jsdom("<html><head></head><body></body></html>");
+            var win = merge({
+                oz: Oz,
+                define: Oz.define,
+                require: Oz.require,
+                console: Object.create(logger),
+                process: process
+            }, doc.createWindow());
+            _runtime = vm.createContext(win);
             _runtime.window = _runtime;
-            _runtime.console = Object.create(logger);
-            _runtime.process = process;
 
             if (_config.ignore) {
                 _config.ignore.forEach(function(mid){
