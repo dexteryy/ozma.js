@@ -15,7 +15,7 @@
         "type": "MIT",
         "url": "http://www.opensource.org/licenses/mit-license.php"
     }],
-    "version": "1.5.0",
+    "version": "1.5.1",
     "bin": {
         "ozma": "bin/ozma"
     },
@@ -28,7 +28,7 @@
     "devDependencies": {
     },
     "dependencies": {
-        "ozjs": "~2.5.3",
+        "ozjs": "~2.5.4",
         "optimist": "~0.3.5",
         "jsdom-nogyp": "~0.8.3"
     },
