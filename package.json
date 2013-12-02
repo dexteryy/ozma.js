@@ -15,7 +15,7 @@
         "type": "MIT",
         "url": "http://www.opensource.org/licenses/mit-license.php"
     }],
-    "version": "1.5.1",
+    "version": "1.6.0",
     "bin": {
         "ozma": "bin/ozma"
     },
@@ -28,9 +28,11 @@
     "devDependencies": {
     },
     "dependencies": {
-        "ozjs": "~2.5.4",
         "optimist": "~0.3.5",
         "jsdom-nogyp": "~0.8.3"
+    },
+    "peerDependencies": {
+        "ozjs": "~2.6.0"
     },
     "keywords" : [
         "browser",

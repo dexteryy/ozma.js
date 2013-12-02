@@ -24,10 +24,11 @@ var _DEFAULT_CONFIG = {
     "disableAutoSuffix": false 
 };
 
-function Ozma(){
+function ozma(){
 
     delete require.cache[require.resolve('ozjs')];
-    var Oz = require('ozjs');
+    var oz = require('ozjs').oz;
+    var origin_oz = oz.origin;
 
     var _runtime;
     var _config = {};
@@ -56,23 +57,23 @@ function Ozma(){
     /**
      * implement hook
      */
-    Oz.require = function(deps){
+    oz.require = function(deps){
         if (_capture_require) {
             _require_holds.push.apply(_require_holds, typeof deps === 'string' ? [deps] : deps);
         } else {
-            return Oz.oz.require.apply(this, arguments);
+            return origin_oz.require.apply(this, arguments);
         }
     };
 
-    Oz.require.config = Oz.config;
+    oz.require.config = origin_oz.require.config;
 
     /**
      * implement hook
      */
-    Oz.exec = function(list){
+    oz.exec = function(list){
         var output_code = '', count = 0;
         if (_is_global_scope) {
-            var loader = _config.loader || Oz._config.loader;
+            var loader = _config.loader || oz.cfg.loader;
             if (loader) {
                 if (_loader_readed) {
                     list.push({
@@ -81,7 +82,7 @@ function Ozma(){
                     });
                 } else {
                     return _delay_exec = function(){
-                        Oz.exec(list);
+                        oz.exec(list);
                     };
                 }
             } else {
@@ -92,7 +93,7 @@ function Ozma(){
         list.reverse().forEach(function(mod){
             var mid = mod.name;
             if (mod.is_reset) {
-                mod = Oz._config.mods[mid];
+                mod = oz.cfg.mods[mid];
             }
             if (mod.url || !mid) {
                 if (mod.built 
@@ -125,7 +126,7 @@ function Ozma(){
             }
         }, _code_cache);
         var output = _config.disableAutoSuffix ? _build_script 
-                                    : Oz.namesuffix(_build_script);
+                                    : oz.namesuffix(_build_script);
         if (!_is_global_scope) {
             output = path.join(_config.distUrl || _config.baseUrl, output);
         } else if (_config.distUrl) {
@@ -155,7 +156,7 @@ function Ozma(){
     /**
      * implement hook
      */
-    Oz.fetch = function(m, cb){
+    oz.fetch = function(m, cb){
         var url = m.url,
             is_undefined_mod,
             observers = _scripts[url];
@@ -164,7 +165,7 @@ function Ozma(){
             if (m.deps && m.deps.length && delays[mname] !== 1) {
                 delays[mname] = [m.deps.length, cb];
                 m.deps.forEach(function(dep){
-                    var d = Oz._config.mods[Oz.realname(dep)];
+                    var d = oz.cfg.mods[oz.realname(dep)];
                     if (this[dep] !== 1 && d.url && d.loaded !== 2) {
                         if (!this[dep]) {
                             this[dep] = [];
@@ -182,7 +183,7 @@ function Ozma(){
             }
             observers = _scripts[url] = [[cb, m]];
             read(m, function(data){
-                var _mods = Oz._config.mods;
+                var _mods = oz.cfg.mods;
                 if (data) {
                     try {
                         _capture_require = true;
@@ -222,7 +223,7 @@ function Ozma(){
                         var b = this[dm.name];
                         if (--b[0] <= 0) {
                             this[dm.name] = 1;
-                            Oz.fetch(dm, b[1]);
+                            oz.fetch(dm, b[1]);
                         }
                     }, delays);
                     _refers[mname] = 1;
@@ -304,11 +305,11 @@ function Ozma(){
         }
         var mods = _file_scope_mods[_current_scope_file];
         var scripts = _file_scope_scripts[_current_scope_file];
-        var m = mods[Oz.realname(mid)];
+        var m = mods[oz.realname(mid)];
         if (m && m.loaded == 2) {
             return seek_lazy_module();
         }
-        var new_build = m && m.url || Oz.filesuffix(Oz.realname(mid));
+        var new_build = m && m.url || oz.filesuffix(oz.realname(mid));
         if (_build_history[new_build]) {
             //return seek_lazy_module();
             var last_build = _build_history[new_build];
@@ -317,21 +318,21 @@ function Ozma(){
         }
         _build_history[new_build] = [mods, scripts];
 
-        Oz._config.mods = copy(mods, 1);
+        oz.cfg.mods = copy(mods, 1);
         _scripts = copy(scripts, 1);
 
         switch_build_script(new_build);
 
         logger.log(STEPMARK, 'Running', '"' + mid + '"(' + '\033[4m' + new_build + '\033[0m' + ')', 'as build script');
         logger.log(STEPMARK, 'Analyzing');
-        Oz.require(mid, function(){});
+        oz.require(mid, function(){});
         return true;
     }
 
     function switch_build_script(url){
         _build_script = url;
         _mods_code_cache[_build_script] = [];
-        _file_scope_mods[url] = Oz._config.mods;
+        _file_scope_mods[url] = oz.cfg.mods;
         _file_scope_scripts[url] = _scripts;
     }
 
@@ -381,7 +382,7 @@ function Ozma(){
         _code_cache[mod.name] = _code_cache[mod.name]
             .replace(RE_REQUIRE_VAL, function($0, $1, $2){
                 var dep = eval($2);
-                return $1 + '"' + Oz.basename(dep, mod) + '")';
+                return $1 + '"' + oz.basename(dep, mod) + '")';
             })
             .replace(RE_REQUIRE_DEPS, tidy)
             .replace(RE_DEFINE_DEPS, tidy);
@@ -391,7 +392,7 @@ function Ozma(){
                 deps = [deps];
             }
             deps = deps.map(function(dep){
-                return Oz.basename(dep, mod);
+                return oz.basename(dep, mod);
             });
             return $1 + $2 + (deps.length ? 
                 ('[\n' + $1 + '  "' + deps.join('",\n' + $1 + '  "') + '"\n' + $1 + ']') 
@@ -446,9 +447,9 @@ function Ozma(){
         if (!_runtime) {
             var doc = require("jsdom-nogyp").jsdom("<html><head></head><body></body></html>");
             var win = merge({
-                oz: Oz,
-                define: Oz.define,
-                require: Oz.require,
+                oz: oz,
+                define: oz.define,
+                require: oz.require,
                 console: Object.create(logger),
                 process: process
             }, doc.createWindow());
@@ -457,7 +458,7 @@ function Ozma(){
 
             if (_config.ignore) {
                 _config.ignore.forEach(function(mid){
-                    Oz.define(mid, [], function(){});
+                    oz.define(mid, [], function(){});
                 });
             }
 
@@ -522,11 +523,11 @@ function Ozma(){
             _capture_require = true;
             vm.runInContext(data, _runtime);
             _capture_require = false;
-            Oz.define('__main__', _require_holds.slice(), function(){});
+            oz.define('__main__', _require_holds.slice(), function(){});
             _require_holds.length = 0;
-            Oz.require('__main__', function(){});
+            oz.require('__main__', function(){});
             //read loader script
-            var loader = _config.loader || Oz._config.loader;
+            var loader = _config.loader || oz.cfg.loader;
             if (loader) {
                 if (opt.loader !== loader) {
                     _loader_config_script = opt.loader_config;
@@ -696,10 +697,10 @@ optimist.usage('Autobuild tool for OzJS based WebApp.\n'
         .boolean('silent')
         .boolean('enable-modulelog');
 
-exports.Ozma = Ozma;
+exports.ozma = exports.Ozma = ozma;
 
 exports.exec = function(){
-    var main = Ozma();
+    var main = ozma();
     main(optimist.alias().argv);
 };
 
