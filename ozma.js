@@ -10,7 +10,7 @@ var INDENTx1 = '';
 var STEPMARK = '\033[34m==>\033[0m';
 var RE_AUTOFIXNAME = /define\((?=[^'"])/;
 var RE_AUTOARGS = /define\(([^\[\]]*?)function\((.*?)\)\{/g;
-var RE_REQUIRE = /(^|\s)require\(\s*(\[[^\]]*\]|.+?)\s*\,/gm;
+var RE_REQUIRE = /(^|\s)require\(\s*(\[[^\]]*\]|[^\)]+?)\s*\,/gm;
 var RE_REQUIRE_VAL = /(require\(\s*)(['"].+?['"])\)/g;
 var RE_REQUIRE_DEPS = /(^|[^\S\n\r]*)(require\(\s*)(\[[^\]]*\])/g;
 var RE_DEFINE_DEPS = /(^|[^\S\n\r]*)(define\(\s*[^\[\),]+,\s*)(\[[^\]]*\])/g;
