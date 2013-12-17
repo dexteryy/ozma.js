@@ -15,7 +15,7 @@
         "type": "MIT",
         "url": "http://www.opensource.org/licenses/mit-license.php"
     }],
-    "version": "1.6.0",
+    "version": "1.6.1",
     "bin": {
         "ozma": "bin/ozma"
     },
@@ -32,7 +32,7 @@
         "jsdom-nogyp": "~0.8.3"
     },
     "peerDependencies": {
-        "ozjs": "~2.6.0"
+        "ozjs": "~2.6.1"
     },
     "keywords" : [
         "browser",

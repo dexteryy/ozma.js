@@ -363,8 +363,15 @@ function ozma(){
     }
 
     function auto_fix_anon(mod){
-        var hiddenDeps = mod.block && mod.block.hiddenDeps;
-        if (hiddenDeps) {
+        var hiddenDeps = [];
+        (mod.block && mod.block.hiddenDeps || []).forEach(function(mid){
+            var unique_mid = oz.realname(oz.basename(mid, mod));
+            if (!this[unique_mid]) {
+                this[unique_mid] = true;
+                hiddenDeps.push(mid);
+            }
+        }, {});
+        if (hiddenDeps.length) {
             _code_cache[mod.name] = _code_cache[mod.name].replace(RE_AUTOARGS, function($0, $1, $2){
                 return 'define(' + $1 
                     + (hiddenDeps.length ? ('["' + hiddenDeps.join('", "') + '"]') : '[]')
@@ -382,7 +389,7 @@ function ozma(){
         _code_cache[mod.name] = _code_cache[mod.name]
             .replace(RE_REQUIRE_VAL, function($0, $1, $2){
                 var dep = eval($2);
-                return $1 + '"' + oz.basename(dep, mod) + '")';
+                return $1 + '"' + oz.realname(oz.basename(dep, mod)) + '")';
             })
             .replace(RE_REQUIRE_DEPS, tidy)
             .replace(RE_DEFINE_DEPS, tidy);
@@ -392,7 +399,7 @@ function ozma(){
                 deps = [deps];
             }
             deps = deps.map(function(dep){
-                return oz.basename(dep, mod);
+                return oz.realname(oz.basename(dep, mod));
             });
             return $1 + $2 + (deps.length ? 
                 ('[\n' + $1 + '  "' + deps.join('",\n' + $1 + '  "') + '"\n' + $1 + ']') 
