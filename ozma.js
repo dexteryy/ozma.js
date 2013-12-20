@@ -389,7 +389,7 @@ function ozma(){
         _code_cache[mod.name] = _code_cache[mod.name]
             .replace(RE_REQUIRE_VAL, function($0, $1, $2){
                 var dep = eval($2);
-                return $1 + '"' + oz.realname(oz.basename(dep, mod)) + '")';
+                return $1 + '"' + oz.basename(dep, mod) + '")';
             })
             .replace(RE_REQUIRE_DEPS, tidy)
             .replace(RE_DEFINE_DEPS, tidy);
@@ -399,7 +399,7 @@ function ozma(){
                 deps = [deps];
             }
             deps = deps.map(function(dep){
-                return oz.realname(oz.basename(dep, mod));
+                return oz.basename(dep, mod);
             });
             return $1 + $2 + (deps.length ? 
                 ('[\n' + $1 + '  "' + deps.join('",\n' + $1 + '  "') + '"\n' + $1 + ']') 
