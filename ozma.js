@@ -4,7 +4,6 @@ var fs = require('fs');
 var path = require('path');
 var vm = require('vm');
 var optimist = require('optimist');
-var logger = Object.create(console);
 
 var INDENTx1 = '';
 var STEPMARK = '\033[34m==>\033[0m';
@@ -24,7 +23,10 @@ var _DEFAULT_CONFIG = {
     "disableAutoSuffix": false 
 };
 
-function ozma(){
+function ozma(opt){
+
+    opt = opt || {};
+    var logger = opt.logger || Object.create(console);
 
     delete require.cache[require.resolve('ozjs')];
     var oz = require('ozjs').oz;
@@ -277,14 +279,17 @@ function ozma(){
             while (r = RE_REQUIRE.exec(clip[1])) {
                 if (r[2]) {
                     var deps_str = r[2].trim();
-                    if (!/^\[?\s*[\x22\x27]/.test(deps_str)) {
-                        logger.log('\n\033[31m' + 'WARN: "require(' + deps_str + '," is unanalyzable' + '\033[0m\n');
+                    try {
+                        if (!/^\[/.test(deps_str)) {
+                            deps_str = '[' + deps_str + ']';
+                        }
+                        _lazy_loading.push.apply(_lazy_loading, eval(deps_str));
+                    } catch (ex) {
+                        logger.warn(STEPMARK, 'Ignore\n', '\033[33m'
+                            + r[0].replace(/\n/g, '').replace(/\s/g, '')
+                            + '...\033[0m\n');
                         continue;
                     }
-                    if (!/^\[/.test(deps_str)) {
-                        deps_str = '[' + deps_str + ']';
-                    }
-                    _lazy_loading.push.apply(_lazy_loading, eval(deps_str));
                 }
             }
             if (!_lazy_loading.length) {
@@ -552,24 +557,10 @@ function ozma(){
         });
     }
 
-    return main;
+    return {
+        exec: main
+    };
 
-}
-
-function mix(target) {
-    var objs = arguments, l = objs.length, o;
-    if (l == 1) {
-        objs[1] = target;
-        l = 2;
-        target = this;
-    }
-    for (var i = 1; i < l; i++) {
-        o = objs[i];
-        for (var n in o) {
-            target[n] = o[n];
-        }
-    }
-    return target;
 }
 
 function merge(origins, news){
@@ -707,8 +698,7 @@ optimist.usage('Autobuild tool for OzJS based WebApp.\n'
 exports.ozma = exports.Ozma = ozma;
 
 exports.exec = function(){
-    var main = ozma();
-    main(optimist.alias().argv);
+    ozma().exec(optimist.alias().argv);
 };
 
 if (!module.parent) {
