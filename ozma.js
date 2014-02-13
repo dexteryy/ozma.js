@@ -55,6 +55,7 @@ function ozma(opt){
     var _output_count = 0;
     var _begin_time;
     var _complete_callback;
+    var _is_library_release = false;
 
     /**
      * implement hook
@@ -87,11 +88,14 @@ function ozma(opt){
                         oz.exec(list);
                     };
                 }
-            } else {
+            } else if (!_is_library_release) {
                 output_code += CONFIG_BUILT_CODE;
             }
         }
         logger.log(STEPMARK, 'Building');
+        if (_is_library_release) {
+            list = list.slice(1);
+        }
         list.reverse().forEach(function(mod){
             var mid = mod.name;
             if (mod.is_reset) {
@@ -118,7 +122,9 @@ function ozma(opt){
                     if (_loader_config_script) {
                         output_code += _loader_config_script;
                     }
-                    output_code += CONFIG_BUILT_CODE;
+                    if (!_is_library_release) {
+                        output_code += CONFIG_BUILT_CODE;
+                    }
                 }
                 if (mod.url && mod.url !== _build_script) {
                     count++;
@@ -436,6 +442,10 @@ function ozma(opt){
 
         if (args['silent']) {
             disable_methods(logger);
+        }
+
+        if (args['library-release']) {
+            _is_library_release = true;
         }
 
         if (!_config["baseUrl"]) {

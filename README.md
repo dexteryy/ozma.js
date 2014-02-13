@@ -24,6 +24,7 @@ ozma [build script] --config [configuration file]
 * `-c` or `--config` — 指定配置文件，可省略，默认读取输入文件(`build script`)同级目录下的`ozconfig.json`作为配置文件
 * `-s` or `--silent` — 不打印任何提示信息
 * `--jam` — 基于Jam的package目录自动生成配置和发布文件
+* `--library-release` — 以库的形式构建发布文件，不包含build script，不在require.config添加ozma的记录
 * `--enable-modulelog` — 允许js文件中的console信息打印在终端里
 
 ## Examples (with docs)
