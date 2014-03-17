@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-
 var fs = require('fs');
 var path = require('path');
 var vm = require('vm');
@@ -74,7 +73,7 @@ function ozma(opt){
      * implement hook
      */
     oz.exec = function(list){
-        var output_code = '', count = 0;
+        var output_mods = [], output_code = '', count = 0;
         if (_is_global_scope) {
             var loader = _config.loader || oz.cfg.loader;
             if (loader) {
@@ -113,6 +112,8 @@ function ozma(opt){
                 if (!import_code) {
                     return;
                 }
+                output_mods.push(mod);
+
                 // semicolons are inserted between files if concatenating would cause errors.
                 output_code += '\n/* @source ' + (mod.url || '') + ' */;\n\n'
                                 + import_code;
@@ -142,7 +143,8 @@ function ozma(opt){
                 relative_path(output, _config.baseUrl));
         }
         output_code += _code_bottom;
-        writeFile3721(output, output_code, function(err){
+
+        var _writeCallback = function(err){
             if (err) {
                 throw err;
             }
@@ -158,7 +160,11 @@ function ozma(opt){
                     _complete_callback();
                 }
             }
-        });
+        };
+        if(opt.pipe) { // is pipe
+            return opt.pipe(output, output_code, output_mods, _writeCallback);
+        }
+        return writeFile3721(output, output_code, _writeCallback);
     };
 
     /**
@@ -678,6 +684,7 @@ function mkdir_p(dirPath, mode, callback) {
 }
 
 function writeFile3721(target, content, callback){
+
     fs.writeFile(target, content, function(err){
         if (err && err.errno === 34) {
             return mkdir_p(path.dirname(target), 0777, function(){
