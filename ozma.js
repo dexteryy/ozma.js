@@ -447,7 +447,7 @@ function ozma(opt){
         var input_dir = path.dirname(args._[0]);
 
         if (args['silent']) {
-            disable_methods(logger);
+            disable_methods(logger, ['error']);
         }
 
         if (args['library-release']) {
@@ -697,10 +697,13 @@ function writeFile3721(target, content, callback){
     });
 }
 
-function disable_methods(obj, cfg){
-    cfg = cfg || obj;
-    for (var i in cfg) {
-        obj[i] = function(){};
+function disable_methods(obj, reserved_methods){
+    var noop = function(){};
+    for (var method in obj) {
+        if (reserved_methods && reserved_methods.indexOf(method) !== -1) {
+            continue;
+        }
+        obj[method] = noop;
     }
 }
 
