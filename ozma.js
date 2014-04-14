@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 var fs = require('fs');
 var path = require('path');
 var vm = require('vm');
@@ -113,7 +114,6 @@ function ozma(opt){
                     return;
                 }
                 output_mods.push(mod);
-
                 // semicolons are inserted between files if concatenating would cause errors.
                 output_code += '\n/* @source ' + (mod.url || '') + ' */;\n\n'
                                 + import_code;
@@ -684,7 +684,6 @@ function mkdir_p(dirPath, mode, callback) {
 }
 
 function writeFile3721(target, content, callback){
-
     fs.writeFile(target, content, function(err){
         if (err && err.errno === 34) {
             return mkdir_p(path.dirname(target), 0777, function(){
