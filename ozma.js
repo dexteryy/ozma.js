@@ -289,7 +289,7 @@ function ozma(opt){
             },
             exports: new_exports
         };
-        new_exports.window = new_exports;
+        new_context.window = new_exports;
         try {
             vm.runInNewContext(data, new_context);
         } catch (ex) {
@@ -445,18 +445,16 @@ function ozma(opt){
                 hiddenDeps.push(mid);
             }
         }, {});
-        if (hiddenDeps.length) {
-            _code_cache[mod.name] = _code_cache[mod.name].replace(RE_AUTOARGS, function($0, $1, $2){
-                return 'define(' + $1 
-                    + (hiddenDeps.length ? ('["' + hiddenDeps.join('", "') + '"]') : '[]')
-                    + ', function(' 
-                    + ($2 && hiddenDeps.length 
-                        ? hiddenDeps.map(function(n, i){
-                            return '__oz' + i;
-                        }).join(', ') + ', ' : '') 
-                    + $2 + '){';
-            });
-        }
+        _code_cache[mod.name] = _code_cache[mod.name].replace(RE_AUTOARGS, function($0, $1, $2){
+            return 'define(' + $1 
+                + (hiddenDeps.length ? ('["' + hiddenDeps.join('", "') + '"]') : '[]')
+                + ', function(' 
+                + ($2 && hiddenDeps.length 
+                    ? hiddenDeps.map(function(n, i){
+                        return '__oz' + i;
+                    }).join(', ') + ', ' : '') 
+                + $2 + '){';
+        });
     }
 
     function auto_fix_deps(mod){
