@@ -13,6 +13,8 @@ var RE_REQUIRE = /(^|\s)require\(\s*(\[[^\]]*\]|[^\)]+?)\s*\,/gm;
 var RE_REQUIRE_VAL = /(require\(\s*)(['"].+?['"])\)/g;
 var RE_REQUIRE_DEPS = /(^|[^\S\n\r]*)(require\(\s*)(\[[^\]]*\])/g;
 var RE_DEFINE_DEPS = /(^|[^\S\n\r]*)(define\(\s*[^\[\),]+,\s*)(\[[^\]]*\])/g;
+var RE_CJS_REQUIRE = /(^|[^\w\-])require\(/;
+var RE_CJS_EXPORTS = /(^|[^\w\-])exports[\.\[\s\=]/;
 var CONFIG_BUILT_CODE = '\nrequire.config({ enable_ozma: true });\n\n';
 var _DEFAULT_CONFIG = {
     "baseUrl": "./",
@@ -199,17 +201,11 @@ function ozma(opt){
             read(m, function(data){
                 var _mods = oz.cfg.mods;
                 if (data) {
-                    try {
-                        _capture_require = true;
-                        vm.runInContext(data, _runtime);
-                        _capture_require = false;
-                        merge(_mods[m.name].deps, _require_holds);
-                        _require_holds.length = 0;
-                    } catch(ex) {
-                        logger.info(INDENTx1, '\033[33m' + 'Unrecognized module: ', m.name + '\033[0m');
-                        _capture_require = false;
-                        _require_holds.length = 0;
-                    }
+                    exec_in_runtime(data, function(deps){
+                        merge(_mods[m.name].deps, deps);
+                    }, function(){
+                        logger.info(INDENTx1, '\033[33m' + 'unrecognized module: ', m.name + '\033[0m');
+                    });
                     if (_mods[m.name] === m) {
                         is_undefined_mod = true;
                     }
@@ -254,7 +250,7 @@ function ozma(opt){
         var file = path.resolve(path.join(_config.baseUrl, m.url));
         if (!fs.existsSync(file)) {
             setTimeout(function(){
-                logger.log(INDENTx1, '\033[33m' + 'Undefined module: ', m.name + '\033[0m');
+                logger.log(INDENTx1, '\033[33m' + 'undefined module: ', m.name + '\033[0m');
                 cb();
             }, 0);
             return;
@@ -264,10 +260,71 @@ function ozma(opt){
                 return logger.error("\033[31m", 'ERROR: Can not read "' + file + '"\033[0m');
             }
             if (data) {
+                if (is_commonjs(data)) {
+                    data = 'define(function(require, exports, module){\n' 
+                        + data 
+                        + '\n});';
+                }
                 _code_cache[m.name] = data;
             }
             cb(data);
         });
+    }
+
+    function is_commonjs(data){
+        var is_cjs = false;
+        var new_exports = {};
+        var new_require = function(mod, fn){
+            if (!fn && (Array.isArray(mod) 
+                    || typeof mod === 'string')) {
+                is_cjs = true;
+            }
+        };
+        new_require.config = function(){};
+        var new_context = {
+            require: new_require,
+            define: function(){},
+            module: {
+                exports: new_exports
+            },
+            exports: new_exports
+        };
+        new_exports.window = new_exports;
+        try {
+            vm.runInNewContext(data, new_context);
+        } catch (ex) {
+            if (RE_CJS_REQUIRE.test(data) || RE_CJS_EXPORTS.test(data)) {
+                return true;
+            }
+        }
+        if (new_exports !== new_context.module.exports) {
+            return true;
+        }
+        for (var i in new_exports) {
+            i = null;
+            return true;
+        }
+        return is_cjs;
+    }
+
+    function exec_in_runtime(data, done, error){
+        try {
+            _capture_require = true;
+            vm.runInContext(data, _runtime);
+            _capture_require = false;
+            if (done) {
+                done(_require_holds);
+            }
+            _require_holds.length = 0;
+        } catch(ex) {
+            if (error) {
+                error(ex);
+            } else {
+                logger.info(INDENTx1, '\033[33m' + 'build script: [' + ex + ']\033[0m');
+            }
+            _capture_require = false;
+            _require_holds.length = 0;
+        }
     }
 
     function seek_lazy_module(){
@@ -546,14 +603,36 @@ function ozma(opt){
             if (err) {
                 return logger.error("\033[31m", 'ERROR: Can not read "' + _build_script + '"\033[0m');
             }
+            if (is_commonjs(data)) {
+                var MAIN_FOR_CJS = '__main4cjs';
+                var config_data = data.split(/[\n\r]/);
+                for (var i = 0, l = config_data.length; i < l; i++) {
+                    if (RE_CJS_REQUIRE.test(config_data[i])) {
+                        break;
+                    }
+                }
+                data = config_data.splice(i);
+                if (!data.length) {
+                    logger.error("\033[31m", "ERROR: build script\033[0m");
+                    return;
+                }
+                data = 'define("' + MAIN_FOR_CJS + '", function(require, exports, module){\n' 
+                    + data.join('\n') 
+                    + '\n});';
+                _code_cache[MAIN_FOR_CJS] = data;
+                var _mods = oz.cfg.mods;
+                exec_in_runtime(data);
+                auto_fix_anon(_mods[MAIN_FOR_CJS]);
+                data = config_data.join('\n') + '\n'
+                    + _code_cache[MAIN_FOR_CJS]
+                        .replace(/^define\("\w+",\s*/, 'require(');
+            }
             _code_cache[''] = data;
             logger.log(STEPMARK, 'Analyzing');
-            _capture_require = true;
-            vm.runInContext(data, _runtime);
-            _capture_require = false;
-            oz.define('__main__', _require_holds.slice(), function(){});
-            _require_holds.length = 0;
-            oz.require('__main__', function(){});
+            exec_in_runtime(data, function(deps){
+                oz.define('__main__', deps.slice(), function(){});
+                oz.require('__main__', function(){});
+            });
             //read loader script
             var loader = _config.loader || oz.cfg.loader;
             if (loader) {
