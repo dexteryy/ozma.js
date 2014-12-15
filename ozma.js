@@ -13,6 +13,7 @@ var RE_REQUIRE = /(^|\s)require\(\s*(\[[^\]]*\]|[^\)]+?)\s*\,/gm;
 var RE_REQUIRE_VAL = /(require\(\s*)(['"].+?['"])\)/g;
 var RE_REQUIRE_DEPS = /(^|[^\S\n\r]*)(require\(\s*)(\[[^\]]*\])/g;
 var RE_DEFINE_DEPS = /(^|[^\S\n\r]*)(define\(\s*[^\[\),]+,\s*)(\[[^\]]*\])/g;
+var RE_AMD_DEFINE = /(^|[^\w\-])define\(/;
 var RE_CJS_REQUIRE = /(^|[^\w\-])require\(/;
 var RE_CJS_EXPORTS = /(^|[^\w\-])exports[\.\[\s\=]/;
 var CONFIG_BUILT_CODE = '\nrequire.config({ enable_ozma: true });\n\n';
@@ -272,6 +273,9 @@ function ozma(opt){
     }
 
     function is_commonjs(data){
+        if (RE_AMD_DEFINE.test(data)) {
+            return false;
+        }
         var is_cjs = false;
         var new_exports = {};
         var new_require = function(mod, fn){
